@@ -5,11 +5,11 @@ instantcpp
 Execute C++ code snippets, directly on the command line.
 
 ```
-$ instantcpp 'std::cout << "Hello World!" << std::cout;'
+$ instantcpp 'std::cout << "Hello World!" << std::endl;'
 Hello World!
 ```
 
-<b>instantcpp</b> gently grabs your naked C++ snippet, lovingly wraps it in a tiny warm blanket of cozy boilerplate code, compiles and executes the whole burrito, and then it even cleans up after itself. How nice!
+<b>instantcpp</b> gently grabs your naked C++ snippet, lovingly wraps it in a tiny warm blanket of cozy boilerplate code, compiles and executes the whole burrito, and then it even cleans up after itself. How nice! :gift_heart:
 
 
 Usage
