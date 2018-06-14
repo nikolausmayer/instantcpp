@@ -14,7 +14,7 @@
 #
 # Usage example:
 #
-# $ instantcpp "std::cout << \"Hello World!\" << std::cout;"
+# $ instantcpp "std::cout << \"Hello World!\" << std::endl;"
 #
 
 
@@ -43,7 +43,7 @@ myecho () {
 ## Print argument, but only if debug flag is set
 #  See http://stackoverflow.com/a/13864829 for how this works
 debugprint () {
-  if [ ! -z ${DEBUG+x} ]; then
+  if test ! -z ${DEBUG+x}; then
     myecho "${1}"
   fi
 }
@@ -140,11 +140,8 @@ shift `expr $OPTIND - 1`
 ## Locations ##
 ###############
 ## Get location of this script (which is where the buffer file lives)
-#SCRIPTDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-#SCRIPTFILE="${SCRIPTDIR}/tmp_main.cc"
-#SCRIPTEXE="${SCRIPTDIR}/tmp_executable"
-SCRIPTFILE=`mktemp --suffix=-quickcli.cc`;
-SCRIPTEXE=`mktemp --suffix=-quickcli`;
+SCRIPTFILE=`mktemp --suffix=-instantcpp.cc`;
+SCRIPTEXE=`mktemp --suffix=-instantcpp`;
 
 ## Cleanup on exit
 function EXIT_TRAP {

@@ -20,10 +20,10 @@ Usage
 Options
 -------
 * `--cxx=<value>`, `--cxx <value>`: Use a custom compiler (instead of `g++`)
-* `--valgrind`: Execute snipped in Valgrind
-* `--gdb`: Execute snipped in GDB
-* `-c <value>`: Add an option to compiler flags. Default is `-W -Wall -Wextra -Wpedantic -std=c++11 -O0` (fairly many warnings, C++11, no optimization).
+* `--valgrind`: Execute snippet in Valgrind
+* `--gdb`: Execute snippet in GDB
+* `-c <value>`: Add an option to compiler flags. Defaults are `-W -Wall -Wextra -Wpedantic -std=c++11 -O0` (fairly many warnings, C++11, no optimization).
 * `-l <value>`: Add an option to linker flags. None by default.
-* `-i <value>`: Add another `#include` to the wrapper code. See [code](instantcpp#194) for defaults.
+* `-i <value>`: Add another `#include` to the wrapper code. See [code](instantcpp#L194) for defaults.
 
 
