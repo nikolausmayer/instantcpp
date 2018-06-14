@@ -1,0 +1,254 @@
+#!/bin/bash
+
+##
+#
+# Author: Nikolaus Mayer, 2018 (mayern@cs.uni-freiburg.de)
+#
+##
+
+#######################################################################
+#
+# Compile and run C++ code snippets from CLI
+#
+#######################################################################
+#
+# Usage example:
+#
+# $ instantcpp "std::cout << \"Hello World!\" << std::cout;"
+#
+
+
+#######################
+## Safety mechanisms ##
+#######################
+## Fail if any command fails (use "|| true" if a command is ok to fail)
+set -e
+## Treat unset variables as error
+set -u
+## Fail if any pipeline command fails
+set -o pipefail
+## Fail if a glob does not expand
+shopt -s failglob
+
+#######################################################################
+
+## Debug flag, COMMENT OUT to disable
+#DEBUG=true
+
+## Wrapper for 'echo' for easy changes later
+myecho () {
+  printf "${1}\n"
+}
+
+## Print argument, but only if debug flag is set
+#  See http://stackoverflow.com/a/13864829 for how this works
+debugprint () {
+  if [ ! -z ${DEBUG+x} ]; then
+    myecho "${1}"
+  fi
+}
+
+## Print option info 
+debugoption () {
+  debugprint "${1}"
+}
+
+## Return "success" or "error"
+SUCCESS () { exit `:`; }
+ERROR   () { exit `false`; }
+
+## Print usage info and exit as failure
+USAGE () {
+  myecho ""
+  myecho "Usage: <<TODO>>"
+  myecho ""
+  ERROR
+}
+
+#######################################################################
+
+debugprint "DEBUG is set"
+
+##############
+## Defaults ##
+##############
+CXXFLAGS="-W -Wall -Wextra -Wpedantic -std=c++11 -O0 "
+LDFLAGS=""
+CXX="g++"
+VALGRIND=0
+GDB=0
+INCLUDES=""
+###############################
+## Parse and process options ##
+###############################
+## See http://stackoverflow.com/a/7680682
+while getopts "c:l:i:-:" OPTION; do
+  case "${OPTION}" in
+    -) 
+      ## Long options using --optionname
+      case "${OPTARG}" in 
+        cxx) 
+          VALUE="${!OPTIND}"; OPTIND=$(($OPTIND+1))
+          CXX="${VALUE}" 
+          debugoption "CXX = ${CXX}"
+          ;;
+        cxx=*) 
+          VALUE="${OPTARG#*=}"
+          CXX="${VALUE}" 
+          debugoption "CXX = ${CXX}"
+          ;;
+        valgrind)
+          VALGRIND=1
+          debugoption "running in VALGRIND"
+          ;;
+        gdb)
+          GDB=1
+          debugoption "running in GDB"
+          ;;
+        *)
+          if test "${OPTERR}" = 1; then
+            myecho "Unknown option --${OPTARG}"
+          fi
+          ERROR
+          ;;
+      esac
+      ;;
+    c)
+      CXXFLAGS+="${OPTARG} "
+      debugoption "CXXFLAGS = ${CXXFLAGS}"
+      ;;
+    l)   
+      LDFLAGS+="${OPTARG} "
+      debugoption "LDFLAGS  = ${LDFLAGS}"
+      ;;
+    i)
+      INCLUDES="${INCLUDES}
+      #include <${OPTARG}>"
+      debugoption "including: <${OPTARG}>"
+      ;;
+    [?]) 
+      ERROR
+      ;;
+  esac
+done
+
+## Reset the arguments index so that $@ only captures non-options
+shift `expr $OPTIND - 1`
+
+
+###############
+## Locations ##
+###############
+## Get location of this script (which is where the buffer file lives)
+#SCRIPTDIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+#SCRIPTFILE="${SCRIPTDIR}/tmp_main.cc"
+#SCRIPTEXE="${SCRIPTDIR}/tmp_executable"
+SCRIPTFILE=`mktemp --suffix=-quickcli.cc`;
+SCRIPTEXE=`mktemp --suffix=-quickcli`;
+
+## Cleanup on exit
+function EXIT_TRAP {
+  ## Tidy up (delete source file and executable)
+  if test -f "${SCRIPTFILE}" && test -w "${SCRIPTFILE}"; then
+    rm "${SCRIPTFILE}"
+  fi
+  if test -f "${SCRIPTEXE}" && test -w "${SCRIPTEXE}"; then
+    rm "${SCRIPTEXE}"
+  fi
+  SUCCESS
+}
+trap EXIT_TRAP EXIT
+
+
+## Test if script folder is writeable
+#if test ! -w "${SCRIPTDIR}"; then
+#  myecho "Cannot write to folder '${SCRIPTDIR}'"
+#  ERROR
+#fi
+
+## Error if temporary source file exists and is not writeable
+if test -f "${SCRIPTFILE}" && test ! -w "${SCRIPTFILE}"; then
+  myecho "Cannot write temporary source file '${SCRIPTFILE}'"
+  ERROR
+fi
+
+
+## No argument? -> Error
+if test $# -eq 0; then
+  myecho "No argument given"
+  ERROR
+fi
+## If there is more than one argument, the user likely forgot the
+#  (necessary) quotes around the text
+if test $# -gt 1; then
+  myecho "More than one argument registered. Did you forget quotes?"
+  ERROR
+fi
+
+## Preamble text
+PRE="
+/**
+ * TEMPORARY FILE. ALL CHANGES WILL BE LOST.
+ */
+
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <algorithm>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <list>
+#include <set>
+#include <sstream>
+#include <string>
+#include <vector>
+"
+
+## Main text
+MAIN="
+int main () {
+
+"
+
+## Closing text
+POST="
+  return EXIT_SUCCESS;
+}
+
+"
+
+## Assemble temporary source file
+echo "${PRE}"       > "${SCRIPTFILE}"
+echo "${INCLUDES}" >> "${SCRIPTFILE}"
+echo "${MAIN}"     >> "${SCRIPTFILE}"
+echo "$1"          >> "${SCRIPTFILE}"
+echo "${POST}"     >> "${SCRIPTFILE}"
+
+## Compile
+## http://stackoverflow.com/a/18622662
+RETURNVALUE=0
+${CXX} ${CXXFLAGS} ${SCRIPTFILE} -o ${SCRIPTEXE} ${LDFLAGS} || RETURNVALUE=$?
+if test $RETURNVALUE -ne 0; then
+  myecho "Compilation failed."
+  EXIT_TRAP
+fi
+
+## Run
+RETURNVALUE=0
+if test $VALGRIND -eq 1; then
+  valgrind --leak-check=full --show-leak-kinds=all ${SCRIPTEXE} || RETURNVALUE=$?
+elif test $GDB -eq 1; then
+  gdb ${SCRIPTEXE} || RETURNVALUE=$?
+else
+  ${SCRIPTEXE} || RETURNVALUE=$?
+fi
+if test $RETURNVALUE -ne 0; then
+  myecho "Program execution failed."
+  EXIT_TRAP
+fi
+
+## Bye!
+SUCCESS
+
