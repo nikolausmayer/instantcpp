@@ -2,7 +2,7 @@
 
 ##
 #
-# Author: Nikolaus Mayer, 2018 (mayern@cs.uni-freiburg.de)
+# Author: Nikolaus Mayer, 2019 (mayern@cs.uni-freiburg.de)
 #
 ##
 
@@ -177,7 +177,7 @@ if test $# -eq 0; then
 fi
 ## If there is more than one argument, the user likely forgot the
 #  (necessary) quotes around the text
-if test $# -gt 1; then
+if test $# -gt 2; then
   myecho "More than one argument registered. Did you forget quotes?"
   ERROR
 fi
@@ -217,11 +217,22 @@ POST="
 "
 
 ## Assemble temporary source file
-echo "${PRE}"       > "${SCRIPTFILE}"
-echo "${INCLUDES}" >> "${SCRIPTFILE}"
-echo "${MAIN}"     >> "${SCRIPTFILE}"
-echo "$1"          >> "${SCRIPTFILE}"
-echo "${POST}"     >> "${SCRIPTFILE}"
+echo "${PRE}"       > "${SCRIPTFILE}";
+echo "${INCLUDES}" >> "${SCRIPTFILE}";
+if test $# -eq 2; then
+  echo "$1"          >> "${SCRIPTFILE}";
+  echo "${MAIN}"     >> "${SCRIPTFILE}";
+  echo "$2"          >> "${SCRIPTFILE}";
+else
+  echo "${MAIN}"     >> "${SCRIPTFILE}";
+  echo "$1"          >> "${SCRIPTFILE}";
+fi
+echo "${POST}"     >> "${SCRIPTFILE}";
+
+if test ! -z ${DEBUG+x}; then
+  cat "${SCRIPTFILE}";
+fi
+
 
 ## Compile
 ## http://stackoverflow.com/a/18622662
